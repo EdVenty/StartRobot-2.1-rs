@@ -2,6 +2,18 @@ import time
 import cv2
 from newRapi import GPIORobotDuoMotorsDuoServosWithLaser,  arduino_map, constrain
 from robot import Interval, Timer, EventState
+from storage import Storage
+
+class Config(Storage):
+    flip_frame: bool = False
+    frame_quality: int = 20
+    frame_boost_quality: int = 60
+
+config = Config('config.json')
+if not config.exists:
+    config.save()
+
+config.load()
 
 robot = GPIORobotDuoMotorsDuoServosWithLaser(
     motor_pwm_pin=13,
@@ -68,22 +80,22 @@ while 1:
     elif e is not None and e.state == 0:
         last_event_timestamp = time.time()
         if e.key == 'W':
-            robot.move(130, 100)
+            robot.move(200, 200)
         elif e.key == 'A':
             robot.move(150, -150)
         elif e.key == 'S':
-            robot.move(-130, -100)
+            robot.move(-200, -200)
         elif e.key == 'D':
             robot.move(-150, 150)
         if e.key == "Up":
             servo2_angle += 1
         elif e.key == "Down":
             servo2_angle -= 1
-        if e.key == 'Left':
+        elif e.key == 'Left':
             servo1_angle += 1
         elif e.key == 'Right':
             servo1_angle -= 1
-        if e.key == 'Space':
+        elif e.key == 'Space':
             robot.laser(255)
             print('laser')
         servo1_angle = constrain(servo1_angle, -80, 80)
@@ -99,7 +111,9 @@ while 1:
         robot.laser(0)
 
     r, frame = cap.read()
+    if config.flip_frame:
+        frame = cv2.flip(frame, -1)
     frame = cv2.resize(frame, (640, 480))
-    robot.set_frame(frame, quality = 60 if quality_boosted else 15)
+    robot.set_frame(frame, quality = config.frame_boost_quality if quality_boosted else config.frame_quality)
     robot.tick()
     quality_boost_vibration_timer.tick()

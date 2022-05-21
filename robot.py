@@ -8,7 +8,7 @@ from enum import Enum
 import cv2
 from loguru import logger
 from threading import Thread
-from websockets import connect
+import websockets
 import asyncio
 import sys
 from turbojpeg import TurboJPEG
@@ -311,7 +311,7 @@ class Robot:
     async def _control_channel(self):
         while True:
             try:
-                async with connect("ws://localhost:8020") as websocket:
+                async with websockets.connect("ws://localhost:8020") as websocket:
                     self.control_ws = websocket
                     logger.debug("Control channel started.")
                     await websocket.send(LOCAL_SERVICE_KEYWORD)
@@ -331,7 +331,7 @@ class Robot:
     async def _video_channel(self):
         while True:
             try:
-                async with connect("ws://localhost:8010") as websocket:
+                async with websockets.connect("ws://localhost:8010") as websocket:
                     logger.debug("Video channel started.")
                     await websocket.send(LOCAL_SERVICE_KEYWORD)
                     logger.debug("Video channel identified as local service.")

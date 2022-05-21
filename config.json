@@ -1,0 +1,17 @@
+[
+    {
+        "name": "flip_frame",
+        "type": "bool",
+        "value": false
+    },
+    {
+        "name": "frame_quality",
+        "type": "int",
+        "value": 25
+    },
+    {
+        "name": "frame_boost_quality",
+        "type": "int",
+        "value": 60
+    }
+]

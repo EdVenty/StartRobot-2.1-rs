@@ -135,6 +135,18 @@ class FileHost:
 		self.choose_python_command()
 
 	@logger.catch()
+	async def run_boot_programs(self):
+		info = self.read_files_info()
+		for name in info:
+			if info[name].properties.get(FilePropertyType.RunOnBoot, False):
+				logger.debug(f"Running on boot program '{name}'.")
+				fileproc = FileProcess(name, self.python_command, self.reader_queue)
+				self.processes.update({name: fileproc})
+				await fileproc.run()
+				info[name].is_running = True
+		self.write_files_info(info)
+
+	@logger.catch()
 	def validate_files(self):
 		info = self.read_files_info()
 		for name in info:
@@ -230,7 +242,6 @@ class FileHost:
 				await self.processes[event.file_name].stop()
 			except ProcessLookupError:
 				logger.warning(f"ProcessLookupError occurred when trying to terminate file process {event.file_name}.")
-			self.processes.pop(event.file_name)
 			information[event.file_name].is_running = False
 			self.write_files_info(information)
 			logger.debug(f"File {event.file_name} stopped (process terminated).")
@@ -270,12 +281,15 @@ class FileHost:
 			if self.ws is None:
 				await asyncio.sleep(0.5)
 			else:
-				try:
-					await self.ws.send(json.dumps({
-						"Log": self.reader_queue.get_nowait()
-					}))
-				except Empty:
-					await asyncio.sleep(0.1)
+				if self.reader_queue.not_empty:
+					try:
+						msg = self.reader_queue.get_nowait()
+						logger.debug(f"Log received: {msg.strip()}.")
+						await self.ws.send(json.dumps({
+							"Log": msg
+						}))
+					except Empty:
+						await asyncio.sleep(0.04)
 			stopped_processes = []
 			for name in self.processes.copy():
 				if not self.processes[name].is_running:
@@ -289,6 +303,10 @@ class FileHost:
 				await self.send_update_files()
 
 	async def _file_channel(self):
+		try:
+			await self.run_boot_programs()
+		except Exception as err:
+			logger.error(err)
 		while True:
 			try:
 				async with websockets.connect("ws://127.0.0.1:8030") as websocket:
